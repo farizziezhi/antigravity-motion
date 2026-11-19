@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Talking-Head Edit Starter</title>
+  <style>
+    :root {
+      /* Replace with chosen talking-head style palette and font */
+      --w: 1080;
+      --h: 1920;
+      --canvas: #1e2226;
+      --ink: #ffffff;
+      --accent: #e85c2b;
+      --font-display: system-ui, -apple-system, sans-serif;
+      --font-body: system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #000; display: grid; place-items: center;
+      font-family: var(--font-body); color: var(--ink);
+    }
+    #viewport {
+      width: calc(var(--w) * 1px);
+      height: calc(var(--h) * 1px);
+      position: relative; overflow: hidden;
+      background: var(--canvas);
+      transform-origin: center center;
+    }
+    #footage {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; background: #20242a;
+    }
+    #graphic-card {
+      position: absolute; inset: 0;
+      background: var(--canvas);
+      display: grid; place-items: center;
+      opacity: 0;
+    }
+    .big-stat {
+      font-family: var(--font-display);
+      font-size: 280px; font-weight: 800; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .kicker {
+      font-size: 36px; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--accent);
+      text-align: center; margin-bottom: 16px;
+    }
+    #subtitle {
+      position: absolute; left: 8%; right: 8%; bottom: 220px;
+      text-align: center; font-size: 46px; font-weight: 600;
+      line-height: 1.25; text-transform: lowercase;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+      opacity: 0;
+    }
+    #subtitle .kw { color: var(--accent); }
+    #debug-bar {
+      position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 99;
+      display: none; align-items: center; gap: 12px;
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(0, 0, 0, 0.82); color: #fff; font: 13px/1 monospace;
+    }
+    #debug-bar input { flex: 1; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+  <div id="viewport">
+    <!-- Point src to local talking-head footage (e.g. ./footage.mp4) -->
+    <video id="footage" muted playsinline preload="auto"></video>
+
+    <div id="graphic-card">
+      <div>
+        <div class="kicker">COUNT</div>
+        <div class="big-stat">24</div>
+      </div>
+    </div>
+
+    <div id="subtitle"></div>
+  </div>
+
+  <div id="debug-bar">
+    <button id="dbg-toggle">Pause</button>
+    <input id="dbg-scrub" type="range" min="0" max="1" step="0.001" value="0" />
+    <span id="dbg-time">0.00s</span>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const IS_DEBUG = params.get('debug') === '1';
+    const IS_CLEAN = params.get('clean') === '1';
+
+    function fitStage() {
+      const vp = document.getElementById('viewport');
+      const w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w'));
+      const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--h'));
+      vp.style.transform = `scale(${Math.min(innerWidth / w, innerHeight / h)})`;
+    }
+    addEventListener('resize', fitStage);
+    fitStage();
+
+    const vid = document.getElementById('footage');
+    const sub = document.getElementById('subtitle');
+
+    function syncVideo(t) {
+      if (vid.readyState >= 1 && Number.isFinite(vid.duration) && vid.duration > 0) {
+        vid.currentTime = t % vid.duration;
+      }
+    }
+
+    const tl = gsap.timeline({
+      paused: IS_CLEAN,
+      repeat: IS_CLEAN ? 0 : -1,
+      onStart: () => { if (!IS_CLEAN && vid.src) vid.play().catch(() => {}); },
+      onRepeat: () => { if (!IS_CLEAN && vid.src) { vid.currentTime = 0; vid.play().catch(() => {}); } }
+    });
+
+    // Example edit beat: talking-head -> fullscreen graphic card -> back to speaker
+    tl.call(() => { sub.innerHTML = 'first line over <span class="kw">footage</span>'; }, null, 0.1)
+      .to(sub, { opacity: 1, duration: 0.2 }, 0.1)
+      .to('#graphic-card', { opacity: 1, duration: 0.25 }, 1.8)
+      .to('#graphic-card', { opacity: 0, duration: 0.25 }, 3.8)
+      .to({}, { duration: 1.0 });
+
+    window.__TL = tl;
+    window.__DURATION = tl.duration();
+    window.__SEEK = (t) => {
+      const clamped = Math.max(0, Math.min(t, tl.duration()));
+      tl.pause(clamped, false);
+      syncVideo(clamped);
+    };
+
+    addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (tl.paused()) { tl.play(); if (vid.src) vid.play().catch(() => {}); }
+        else { tl.pause(); vid.pause(); }
+      }
+      if (e.key === 'r' || e.key === 'R') { tl.play(0); syncVideo(0); }
+    });
+
+    if (IS_DEBUG) {
+      const bar = document.getElementById('debug-bar');
+      const scrub = document.getElementById('dbg-scrub');
+      const timeEl = document.getElementById('dbg-time');
+      const btn = document.getElementById('dbg-toggle');
+      bar.style.display = 'flex';
+      btn.onclick = () => { tl.paused() ? tl.play() : tl.pause(); btn.textContent = tl.paused() ? 'Play' : 'Pause'; };
+      scrub.oninput = () => { window.__SEEK(parseFloat(scrub.value) * tl.duration()); };
+      tl.eventCallback('onUpdate', () => {
+        scrub.value = (tl.time() / tl.duration()).toFixed(4);
+        timeEl.textContent = `${tl.time().toFixed(2)}s / ${tl.duration().toFixed(2)}s`;
+      });
+    }
+  </script>
+</body>
+</html>

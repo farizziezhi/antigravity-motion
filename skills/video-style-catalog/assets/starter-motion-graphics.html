@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Motion Graphics Starter</title>
+  <style>
+    :root {
+      /* Replace these placeholder tokens with the chosen style's palette and fonts */
+      --w: 1080;
+      --h: 1920;
+      --bg: #14161a;
+      --surface: #22262e;
+      --ink: #f5f5f5;
+      --accent: #ffd21f;
+      --font-display: system-ui, -apple-system, sans-serif;
+      --font-body: system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #000; display: grid; place-items: center;
+      font-family: var(--font-body); color: var(--ink);
+    }
+    #viewport {
+      width: calc(var(--w) * 1px);
+      height: calc(var(--h) * 1px);
+      position: relative; overflow: hidden;
+      background: var(--bg);
+      transform-origin: center center;
+    }
+    #world {
+      position: absolute; inset: 0;
+      transform-origin: center center;
+      will-change: transform;
+    }
+    .beat {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      padding: 96px 72px;
+      pointer-events: none;
+    }
+    .hero-num {
+      font-family: var(--font-display);
+      font-size: 220px; font-weight: 800; line-height: 0.95;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+    }
+    .tag {
+      position: absolute; top: 64px; right: 64px;
+      font-size: 28px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; opacity: 0.9;
+    }
+    #caption {
+      position: absolute; left: 50%; bottom: 120px;
+      transform: translateX(-50%);
+      max-width: 86%; padding: 18px 34px;
+      border-radius: 999px;
+      background: rgba(12, 14, 18, 0.86);
+      font-size: 40px; font-weight: 600; text-align: center;
+      line-height: 1.25; opacity: 0;
+    }
+    #caption .kw { color: var(--accent); }
+    #debug-bar {
+      position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 99;
+      display: none; align-items: center; gap: 12px;
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(0, 0, 0, 0.82); color: #fff; font: 13px/1 monospace;
+    }
+    #debug-bar input { flex: 1; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+  <div id="viewport">
+    <div id="world">
+      <!-- Replace with style-specific world layers and scenes -->
+      <div class="beat" id="beat-1">
+        <div class="hero-num" id="counter">0</div>
+      </div>
+    </div>
+    <div class="tag" id="top-tag">CATEGORY</div>
+    <div id="caption"></div>
+  </div>
+
+  <div id="debug-bar">
+    <button id="dbg-toggle">Pause</button>
+    <input id="dbg-scrub" type="range" min="0" max="1" step="0.001" value="0" />
+    <span id="dbg-time">0.00s</span>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const IS_DEBUG = params.get('debug') === '1';
+    const IS_CLEAN = params.get('clean') === '1';
+
+    function fitStage() {
+      const vp = document.getElementById('viewport');
+      const w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w'));
+      const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--h'));
+      const s = Math.min(innerWidth / w, innerHeight / h);
+      vp.style.transform = `scale(${s})`;
+    }
+    addEventListener('resize', fitStage);
+    fitStage();
+
+    // Helper: set bottom caption text with optional keyword highlight
+    function setCaption(tl, at, html, dur = 0.25) {
+      const el = document.getElementById('caption');
+      tl.call(() => { el.innerHTML = html; }, null, at);
+      tl.fromTo(el, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: dur, ease: 'power2.out' }, at);
+    }
+
+    const tl = gsap.timeline({
+      paused: IS_CLEAN,
+      repeat: IS_CLEAN ? 0 : -1,
+      defaults: { ease: 'power3.out' }
+    });
+
+    // Example deterministic timeline (replace with approved rundown)
+    const state = { n: 0 };
+    const counterEl = document.getElementById('counter');
+
+    tl.from('#world', { scale: 1.08, duration: 0.9 }, 0)
+      .to(state, {
+        n: 72, duration: 2.2, ease: 'power2.out',
+        onUpdate: () => { counterEl.textContent = Math.round(state.n); }
+      }, 0.1)
+      .to('#world', { scale: 1.02, duration: 2.5, ease: 'sine.inOut' }, 0.9);
+
+    setCaption(tl, 0.2, 'Replace with <span class="kw">your story</span> line.');
+    tl.to({}, { duration: 1.0 }); // tail hold
+
+    // Deterministic render hook for snap.mjs and export-frames.mjs
+    window.__TL = tl;
+    window.__DURATION = tl.duration();
+    window.__SEEK = (t) => { tl.pause(Math.max(0, Math.min(t, tl.duration())), false); };
+
+    // Hidden playback keys
+    addEventListener('keydown', (e) => {
+      if (e.code === 'Space') { e.preventDefault(); tl.paused() ? tl.play() : tl.pause(); }
+      if (e.key === 'r' || e.key === 'R') { tl.play(0); }
+    });
+
+    // Optional ?debug=1 scrub bar
+    if (IS_DEBUG) {
+      const bar = document.getElementById('debug-bar');
+      const scrub = document.getElementById('dbg-scrub');
+      const timeEl = document.getElementById('dbg-time');
+      const btn = document.getElementById('dbg-toggle');
+      bar.style.display = 'flex';
+      btn.onclick = () => { tl.paused() ? tl.play() : tl.pause(); btn.textContent = tl.paused() ? 'Play' : 'Pause'; };
+      scrub.oninput = () => { tl.pause(parseFloat(scrub.value) * tl.duration()); };
+      tl.eventCallback('onUpdate', () => {
+        scrub.value = (tl.time() / tl.duration()).toFixed(4);
+        timeEl.textContent = `${tl.time().toFixed(2)}s / ${tl.duration().toFixed(2)}s`;
+      });
+    }
+  </script>
+</body>
+</html>

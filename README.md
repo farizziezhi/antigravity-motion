@@ -1,10 +1,12 @@
 # video-style-catalog
 
-An agent skill with 64 named visual styles for short-form explainer videos:
+An agent skill for building browser-playable short-form explainer videos (HTML + CSS + GSAP + Three.js, optional MP4 export) across **64 named visual styles**:
 
 - **3D animation** (20): `skills/video-style-catalog/styles/3d/`
 - **Motion graphics** (24): `skills/video-style-catalog/styles/motion-graphics/`
 - **Talking-head edits** (20): `skills/video-style-catalog/styles/talking-head/`
+
+Includes three deterministic HTML starters (`assets/`), mechanical anti-PPT production rules (`references/production-rules.md`), key-frame contact-sheet verification (`scripts/snap.mjs`), and FFmpeg MP4 export (`scripts/export-frames.mjs`).
 
 Each style file lists palette (hex), materials, typography, composition, mood, signature elements, a recipe with concrete values, don'ts, a one-frame test, and a topic-free base prompt.
 

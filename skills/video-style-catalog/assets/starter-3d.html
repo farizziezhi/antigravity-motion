@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3D Style Starter</title>
+  <style>
+    :root {
+      /* Replace with chosen 3D style palette and font */
+      --w: 1080;
+      --h: 1920;
+      --bg: #0f2537;
+      --ink: #ffffff;
+      --accent: #ffc83d;
+      --font-body: system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #000; display: grid; place-items: center;
+      font-family: var(--font-body); color: var(--ink);
+    }
+    #viewport {
+      width: calc(var(--w) * 1px);
+      height: calc(var(--h) * 1px);
+      position: relative; overflow: hidden;
+      background: var(--bg);
+      transform-origin: center center;
+    }
+    #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    #caption {
+      position: absolute; left: 50%; bottom: 120px;
+      transform: translateX(-50%);
+      max-width: 84%; padding: 18px 34px;
+      border-radius: 999px;
+      background: rgba(15, 20, 28, 0.8);
+      font-size: 38px; font-weight: 600; text-align: center;
+      line-height: 1.25; opacity: 0;
+    }
+    #caption .kw { color: var(--accent); }
+    #debug-bar {
+      position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 99;
+      display: none; align-items: center; gap: 12px;
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(0, 0, 0, 0.82); color: #fff; font: 13px/1 monospace;
+    }
+    #debug-bar input { flex: 1; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="viewport">
+    <canvas id="gl"></canvas>
+    <div id="caption"></div>
+  </div>
+
+  <div id="debug-bar">
+    <button id="dbg-toggle">Pause</button>
+    <input id="dbg-scrub" type="range" min="0" max="1" step="0.001" value="0" />
+    <span id="dbg-time">0.00s</span>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const params = new URLSearchParams(location.search);
+    const IS_DEBUG = params.get('debug') === '1';
+    const IS_CLEAN = params.get('clean') === '1';
+
+    const W = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w'));
+    const H = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--h'));
+
+    function fitStage() {
+      const vp = document.getElementById('viewport');
+      vp.style.transform = `scale(${Math.min(innerWidth / W, innerHeight / H)})`;
+    }
+    addEventListener('resize', fitStage);
+    fitStage();
+
+    const canvas = document.getElementById('gl');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: IS_CLEAN });
+    renderer.setSize(W, H, false);
+    renderer.setPixelRatio(1);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#0f2537');
+
+    const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 200);
+    camera.position.set(0, 2.2, 7.5);
+
+    const ambient = new THREE.AmbientLight('#8fb8d6', 0.7);
+    const key = new THREE.DirectionalLight('#f28c28', 1.8);
+    key.position.set(4, 6, 5);
+    scene.add(ambient, key);
+
+    // Replace with style-specific 3D world geometry
+    const hero = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 1.6, 1.6),
+      new THREE.MeshStandardMaterial({ color: '#1d4e5f', flatShading: true, roughness: 0.85 })
+    );
+    scene.add(hero);
+
+    // Pure function of timeline time t (no Date.now, no Math.random)
+    function renderAt(t) {
+      hero.rotation.y = t * 0.7;
+      hero.position.y = Math.sin(t * 2.2) * 0.18;
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    }
+
+    const tl = gsap.timeline({
+      paused: IS_CLEAN,
+      repeat: IS_CLEAN ? 0 : -1,
+      onUpdate: () => renderAt(tl.time())
+    });
+
+    const cap = document.getElementById('caption');
+    tl.to(camera.position, { z: 4.8, y: 1.4, duration: 2.5, ease: 'power2.inOut' }, 0)
+      .call(() => { cap.innerHTML = 'Replace with <span class="kw">3D story</span> caption.'; }, null, 0.2)
+      .to(cap, { opacity: 1, duration: 0.3 }, 0.2)
+      .to(camera.position, { z: 9.0, y: 3.4, duration: 2.5, ease: 'power2.inOut' }, 2.6);
+
+    renderAt(0);
+
+    window.__TL = tl;
+    window.__DURATION = tl.duration();
+    window.__SEEK = (t) => {
+      tl.pause(Math.max(0, Math.min(t, tl.duration())), false);
+      renderAt(tl.time());
+    };
+
+    addEventListener('keydown', (e) => {
+      if (e.code === 'Space') { e.preventDefault(); tl.paused() ? tl.play() : tl.pause(); }
+      if (e.key === 'r' || e.key === 'R') { tl.play(0); }
+    });
+
+    if (IS_DEBUG) {
+      const bar = document.getElementById('debug-bar');
+      const scrub = document.getElementById('dbg-scrub');
+      const timeEl = document.getElementById('dbg-time');
+      const btn = document.getElementById('dbg-toggle');
+      bar.style.display = 'flex';
+      btn.onclick = () => { tl.paused() ? tl.play() : tl.pause(); btn.textContent = tl.paused() ? 'Play' : 'Pause'; };
+      scrub.oninput = () => { window.__SEEK(parseFloat(scrub.value) * tl.duration()); };
+      const orig = tl.eventCallback('onUpdate');
+      tl.eventCallback('onUpdate', () => {
+        if (orig) orig();
+        scrub.value = (tl.time() / tl.duration()).toFixed(4);
+        timeEl.textContent = `${tl.time().toFixed(2)}s / ${tl.duration().toFixed(2)}s`;
+      });
+    }
+  </script>
+</body>
+</html>

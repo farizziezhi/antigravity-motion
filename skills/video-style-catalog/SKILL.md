@@ -1,34 +1,63 @@
 ---
 name: video-style-catalog
 description: >-
-  Catalog of 64 named visual styles for short-form explainer videos across
-  three families: 3D animation, 2D motion graphics, and talking-head edit
-  treatments. Each style gives hex palette, materials, typography,
-  composition, signature elements, recipe, and don'ts. Use when asked to
-  design, prompt, render, or edit a video or frame in a named style, or to
-  pick a visual style for a topic.
+  Build browser-playable short-form videos, motion graphics, 3D explainers,
+  and talking-head edits (HTML + CSS + GSAP + Three.js, optional MP4 export)
+  using 64 named visual styles across 3D animation, 2D motion graphics, and
+  talking-head edit treatments. Use when asked to create an explainer video,
+  motion graphic, animated promo, storyboard, frame prompt, or talking-head
+  edit in a named style, or to pick a visual style for a topic.
 ---
 
 # Video Style Catalog
 
-This skill holds **visual style only**: no stories, topics, or plots. Every style must work for any topic.
+This skill combines **64 topic-agnostic visual styles** (`styles/`) with a **deterministic browser production pipeline** (`assets/`, `scripts/`, `references/production-rules.md`). Stories belong to the user; styles control palette, materials, typography, composition, and motion.
+
+## Prerequisites (browser-first)
+
+- Watching the deliverable (`index.html`) requires only a modern browser + CDN access (GSAP, Three.js, fonts). Never require `npm install` or a dev server just to watch.
+- Node + Puppeteer are **optional**: used only for `scripts/snap.mjs` (visual verification contact sheet) and `scripts/export-frames.mjs` (frame-by-frame MP4 export, which also requires `ffmpeg`). Without them, open `index.html?debug=1` in the browser to scrub and inspect manually.
 
 ## Core rules
 
 1. **One-frame test.** From a single rendered frame, a viewer should name the style without a label. If not, sharpen the signature elements. Do not add decoration.
-2. **Topic-agnostic.** Sample on-screen text in style files shows *shape* only (length, casing, highlight position). Replace it with the user's content.
-3. **On-screen language follows the audience.** Write on-screen text in the user's target language. Default to the language the user writes in.
-4. **One idea per screen.** A new idea means a new card or scene.
-5. **Real numbers and sources only.** Styles built on big numbers or cited sources still need real data from the user or a checkable source. No data: show the marker `[REAL DATA]`. Never invent figures.
-6. **Original assets.** Imitate the visual language (palette, composition, technique). Never copy third-party footage, images, music, characters, or logos.
+2. **Video, not slides.** Before writing code, read [references/production-rules.md](references/production-rules.md): no fading `<section>` slide decks, max 2 text tiers per beat, deterministic `tl.time()` only (no `Date.now()` / `Math.random()`), no player chrome on screen by default.
+3. **Topic-agnostic.** Sample on-screen text in style files shows *shape* only (length, casing, highlight position). Replace it with the user's content.
+4. **On-screen language follows the audience.** Write on-screen text in the user's target language. Default to the language the user writes in.
+5. **One idea per screen.** A new idea means a new card or scene.
+6. **Real numbers and sources only.** Styles built on big numbers or cited sources still need real data from the user or a checkable source. No data: show the marker `[REAL DATA]`. Never invent figures.
+7. **Original assets.** Imitate the visual language (palette, composition, technique). Never copy third-party footage, images, music, characters, or logos.
 
-## How to use
+## Production workflow
 
-1. User names a style: open its file from the index below and apply every section.
-2. User has no style yet: ask which family fits (3D, motion graphics, talking-head edit), then offer 2 or 3 matching styles from the index.
-3. Apply the family system below first, then the style's own language on top.
-4. **Apply style to a story:** let the user's story set scene count and order; adapt pacing or camera beats in `Recipe` when the plot needs it, while locking hex palette, materials, character proportions, and subtitle rules across every scene.
-5. Before delivering: run the style's **One-frame test** and check its **Don'ts**.
+1. **Clarify scope in one turn.** If missing, ask for topic/script, aspect ratio (`9:16` default or `16:9`), target duration, and whether audio/VO exists.
+2. **Select the style.** If the user named a style, open its file from the index below. If not, ask which family fits (3D, motion graphics, talking-head edit) and offer 2 or 3 matching styles.
+3. **Write Style Brief + Rundown before coding.** Show the user:
+   - Chosen style + locked hex palette, fonts, and subtitle rule.
+   - Scene rundown table: `sec | scene | line | visual`.
+   Wait for approval before writing code. Let the user's story set scene count and order; adapt pacing or camera beats in `Recipe` when the plot needs it while keeping palette, materials, character proportions, and subtitles locked across every scene.
+4. **Scaffold from the family starter** (never from scratch):
+   - Motion graphics: `assets/starter-motion-graphics.html`
+   - 3D animation: `assets/starter-3d.html`
+   - Talking-head edit: `assets/starter-talking-head.html`
+   Replace all starter placeholder tokens (`--bg`, `--ink`, `--accent`, fonts) with the chosen style's palette and typography immediately.
+5. **Build deterministic scenes.** Drive every animation, counter, camera move, Three.js frame, and video seek from `window.__TL` (`tl.time()`). Follow the family system below first, then the style file's `Recipe` and `Don'ts`.
+6. **Verify visually before delivering.** Never judge from code alone:
+   - With Node + Puppeteer: run `node scripts/snap.mjs index.html 8 ./snaps` and inspect `snaps/contact-sheet.html` (check text clipping, overlap, contrast, and the style's **One-frame test**).
+   - Without Node: open `index.html?debug=1`, scrub key timestamps, and verify visually.
+7. **Deliver a single self-contained `index.html`.** Inline CSS and JS so double-clicking via `file://` autoplays and loops with no player UI (`Space` pause, `R` restart, `?debug=1` scrub bar). Export MP4 only if requested: `node scripts/export-frames.mjs index.html output.mp4 30`.
+
+## Package contents
+
+| Path | Purpose |
+|---|---|
+| `styles/{3d,motion-graphics,talking-head}/*.md` | 64 visual style definitions (read only the chosen style) |
+| `references/production-rules.md` | Mechanical anti-PPT rules, determinism, single-file checklist |
+| `assets/starter-motion-graphics.html` | GSAP 2D motion graphics stage (`?debug=1`, `?clean=1`, `window.__SEEK`) |
+| `assets/starter-3d.html` | Three.js + GSAP deterministic 3D stage |
+| `assets/starter-talking-head.html` | Video-synced talking-head treatment stage |
+| `scripts/snap.mjs` | Headless Puppeteer key-frame capture + HTML contact sheet |
+| `scripts/export-frames.mjs` | Deterministic frame render + FFmpeg MP4 export |
 
 ## Family systems
 
